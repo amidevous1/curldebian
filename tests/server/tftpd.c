@@ -268,15 +268,6 @@ static struct tftphdr *w_init(void);
 
 static struct tftphdr *r_init(void);
 
-static int readit(struct testcase *test,
-                  struct tftphdr **dpp,
-                  int convert);
-
-static int writeit(struct testcase *test,
-                   struct tftphdr **dpp,
-                   int ct,
-                   int convert);
-
 static void read_ahead(struct testcase *test, int convert);
 
 static ssize_t write_behind(struct testcase *test, int convert);
@@ -539,7 +530,7 @@ static void read_ahead(struct testcase *test,
 /* Update count associated with the buffer, get new buffer from the queue.
    Calls write_behind only if next buffer not available.
  */
-static int writeit(struct testcase *test, struct tftphdr **dpp,
+static int writeit(struct testcase *test, struct tftphdr * volatile *dpp,
                    int ct, int convert)
 {
   bfs[current].counter = ct;      /* set size of data to write */
@@ -574,7 +565,11 @@ static ssize_t write_behind(struct testcase *test, int convert)
   if(!test->ofile) {
     char outfile[256];
     snprintf(outfile, sizeof(outfile), "log/upload.%ld", test->testno);
+#ifdef WIN32
+    test->ofile=open(outfile, O_CREAT|O_RDWR|O_BINARY, 0777);
+#else
     test->ofile=open(outfile, O_CREAT|O_RDWR, 0777);
+#endif
     if(test->ofile == -1) {
       logmsg("Couldn't create and/or open file %s for upload!", outfile);
       return -1; /* failure! */
@@ -885,8 +880,7 @@ int main(int argc, char **argv)
       memset(&test, 0, sizeof(test));
       if (do_tftp(&test, tp, n) < 0)
         break;
-      if(test.buffer)
-        free(test.buffer);
+      free(test.buffer);
     }
     sclose(peer);
     peer = CURL_SOCKET_BAD;
@@ -961,6 +955,8 @@ static int do_tftp(struct testcase *test, struct tftphdr *tp, ssize_t size)
 #ifdef USE_WINSOCK
   DWORD recvtimeout, recvtimeoutbak;
 #endif
+  char *option = (char *)"mode"; /* mode is implicit */
+  int toggle = 1;
 
   /* Open request dump file. */
   server = fopen(REQUEST_DUMP, "ab");
@@ -976,22 +972,48 @@ static int do_tftp(struct testcase *test, struct tftphdr *tp, ssize_t size)
 
   cp = (char *)&tp->th_stuff;
   filename = cp;
-again:
-  while (cp < &buf.storage[size]) {
-    if (*cp == '\0')
+  do {
+    bool endofit = true;
+    while (cp < &buf.storage[size]) {
+      if (*cp == '\0') {
+        endofit = false;
+        break;
+      }
+      cp++;
+    }
+    if(endofit)
+      /* no more options */
       break;
-    cp++;
-  }
+
+    /* before increasing pointer, make sure it is still within the legal
+       space */
+    if((cp+1) < &buf.storage[size]) {
+      ++cp;
+      if(first) {
+        /* store the mode since we need it later */
+        mode = cp;
+        first = 0;
+      }
+      if(toggle)
+        /* name/value pair: */
+        fprintf(server, "%s: %s\n", option, cp);
+      else {
+        /* store the name pointer */
+        option = cp;
+      }
+      toggle ^= 1;
+    }
+    else
+      /* No more options */
+      break;
+  } while(1);
+
   if (*cp) {
     nak(EBADOP);
     fclose(server);
     return 3;
   }
-  if (first) {
-    mode = ++cp;
-    first = 0;
-    goto again;
-  }
+
   /* store input protocol */
   fprintf(server, "filename: %s\n", filename);
 
@@ -1000,7 +1022,6 @@ again:
       *cp = (char)tolower((int)*cp);
 
   /* store input protocol */
-  fprintf(server, "mode: %s\n", mode);
   fclose(server);
 
   for (pf = formata; pf->f_mode; pf++)
@@ -1098,8 +1119,7 @@ static int parse_servercmd(struct testcase *req)
       else
         break;
     }
-    if(orgcmd)
-      free(orgcmd);
+    free(orgcmd);
   }
 
   return 0; /* OK! */
@@ -1211,7 +1231,8 @@ static void sendtftp(struct testcase *test, struct formats *pf)
 {
   int size;
   ssize_t n;
-  unsigned short sendblock; /* block count */
+  /* This is volatile to live through a siglongjmp */
+  volatile unsigned short sendblock; /* block count */
   struct tftphdr *sdp;      /* data buffer */
   struct tftphdr *sap;      /* ack buffer */
 
@@ -1289,15 +1310,16 @@ static void sendtftp(struct testcase *test, struct formats *pf)
 static void recvtftp(struct testcase *test, struct formats *pf)
 {
   ssize_t n, size;
-  unsigned short recvblock; /* block count */
-  struct tftphdr *rdp;      /* data buffer */
+  /* These are volatile to live through a siglongjmp */
+  volatile unsigned short recvblock; /* block count */
+  struct tftphdr * volatile rdp;     /* data buffer */
   struct tftphdr *rap;      /* ack buffer */
 
   recvblock = 0;
+  rdp = w_init();
 #if defined(HAVE_ALARM) && defined(SIGALRM)
   mysignal(SIGALRM, timer);
 #endif
-  rdp = w_init();
   rap = &ackbuf.hdr;
   do {
     timeout = 0;
@@ -1378,7 +1400,7 @@ abort:
 
 /*
  * Send a nak packet (error message).  Error code passed in is one of the
- * standard TFTP codes, or a UNIX errno offset by 100.
+ * standard TFTP codes, or a Unix errno offset by 100.
  */
 static void nak(int error)
 {

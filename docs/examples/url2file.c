@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2012, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2016, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -19,6 +19,10 @@
  * KIND, either express or implied.
  *
  ***************************************************************************/
+/* <DESC>
+ * Download a given URL into a local file named page.out.
+ * </DESC>
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -63,9 +67,8 @@ int main(int argc, char *argv[])
   pagefile = fopen(pagefilename, "wb");
   if (pagefile) {
 
-    /* write the page body to this file handle. CURLOPT_FILE is also known as
-       CURLOPT_WRITEDATA*/
-    curl_easy_setopt(curl_handle, CURLOPT_FILE, pagefile);
+    /* write the page body to this file handle */
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, pagefile);
 
     /* get it! */
     curl_easy_perform(curl_handle);

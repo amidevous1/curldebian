@@ -7,7 +7,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2012, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2014, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -25,7 +25,7 @@
 
 #if defined(MSDOS) || defined(WIN32)
 
-char *sanitize_dos_name(char *file_name);
+CURLcode sanitize_file_name(char **filename);
 
 #if defined(MSDOS) && (defined(__DJGPP__) || defined(__GO32__))
 
@@ -35,7 +35,8 @@ char **__crt0_glob_function(char *arg);
 
 #ifdef WIN32
 
-CURLcode FindWin32CACert(struct Configurable *config, const char *bundle_file);
+CURLcode FindWin32CACert(struct OperationConfig *config,
+                         const char *bundle_file);
 
 #endif /* WIN32 */
 
