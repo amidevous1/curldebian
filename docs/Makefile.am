@@ -5,7 +5,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
 #
 # This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 # KIND, either express or implied.
+#
+# SPDX-License-Identifier: curl
 #
 ###########################################################################
 
@@ -53,10 +55,12 @@ EXTRA_DIST =                                    \
  CODE_OF_CONDUCT.md                             \
  CODE_REVIEW.md                                 \
  CODE_STYLE.md                                  \
+ CONNECTION-FILTERS.md                          \
  CONTRIBUTE.md                                  \
  CURL-DISABLE.md                                \
  DEPRECATE.md                                   \
  DYNBUF.md                                      \
+ EARLY-RELEASE.md                               \
  EXPERIMENTAL.md                                \
  FAQ                                            \
  FEATURES.md                                    \
@@ -82,14 +86,16 @@ EXTRA_DIST =                                    \
  RELEASE-PROCEDURE.md                           \
  RUSTLS.md                                      \
  ROADMAP.md                                     \
- SECURITY-PROCESS.md                            \
+ SECURITY-ADVISORY.md                           \
  SSL-PROBLEMS.md                                \
  SSLCERTS.md                                    \
  THANKS                                         \
  TODO                                           \
  TheArtOfHttpScripting.md                       \
  URL-SYNTAX.md                                  \
- VERSIONS.md
+ VERSIONS.md                                    \
+ VULN-DISCLOSURE-POLICY.md                      \
+ WEBSOCKET.md
 
 MAN2HTML= roffit $< >$@
 
@@ -105,7 +111,8 @@ SUFFIXES = .1 .html .pdf
 # have changed.
 $(abs_builddir)/curl.1:
 	if test "$(top_builddir)x" != "$(top_srcdir)x" -a -e "$(srcdir)/curl.1"; then \
-		$(INSTALL_DATA) "$(srcdir)/curl.1" $@; fi
+		$(INSTALL_DATA) "$(srcdir)/curl.1" $@ \
+		&& touch -r "$(srcdir)/curl.1" $@; fi
 	cd cmdline-opts && $(MAKE)
 
 html: $(HTMLPAGES)

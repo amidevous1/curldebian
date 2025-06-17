@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -18,9 +18,11 @@
 .\" * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 .\" * KIND, either express or implied.
 .\" *
+.\" * SPDX-License-Identifier: curl
+.\" *
 .\" **************************************************************************
 .\"
-.TH CURLINFO_OS_ERRNO 3 "November 26, 2021" "libcurl 7.81.0" "curl_easy_getinfo options"
+.TH CURLINFO_OS_ERRNO 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLINFO_OS_ERRNO \- get errno number from last connect failure
@@ -38,19 +40,22 @@ operation. The number is OS and system specific.
 All
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  CURLcode res;
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
-  res = curl_easy_perform(curl);
-  if(res != CURLE_OK) {
-    long error;
-    res = curl_easy_getinfo(curl, CURLINFO_OS_ERRNO, &error);
-    if(res && error) {
-      printf("Errno: %ld\\n", error);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
+    res = curl_easy_perform(curl);
+    if(res != CURLE_OK) {
+      long error;
+      res = curl_easy_getinfo(curl, CURLINFO_OS_ERRNO, &error);
+      if(res && error) {
+        printf("Errno: %ld\\n", error);
+      }
     }
+    curl_easy_cleanup(curl);
   }
-  curl_easy_cleanup(curl);
 }
 .fi
 .SH AVAILABILITY
@@ -58,4 +63,5 @@ Added in 7.12.2
 .SH RETURN VALUE
 Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.
 .SH "SEE ALSO"
-.BR curl_easy_getinfo "(3), " curl_easy_setopt "(3), "
+.BR curl_easy_getinfo (3),
+.BR curl_easy_setopt (3)

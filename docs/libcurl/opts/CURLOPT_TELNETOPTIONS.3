@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -18,9 +18,11 @@
 .\" * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 .\" * KIND, either express or implied.
 .\" *
+.\" * SPDX-License-Identifier: curl
+.\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_TELNETOPTIONS 3 "November 26, 2021" "libcurl 7.81.0" "curl_easy_setopt options"
+.TH CURLOPT_TELNETOPTIONS 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_TELNETOPTIONS \- set of telnet options
@@ -34,24 +36,28 @@ CURLcode curl_easy_setopt(CURL *handle, CURLOPT_TELNETOPTIONS,
 .SH DESCRIPTION
 Provide a pointer to a curl_slist with variables to pass to the telnet
 negotiations. The variables should be in the format <option=value>. libcurl
-supports the options 'TTYPE', 'XDISPLOC' and 'NEW_ENV'. See the TELNET
-standard for details.
+supports the options \fBTTYPE\fP, \fBXDISPLOC\fP and \fBNEW_ENV\fP. See the
+TELNET standard for details.
 .SH DEFAULT
 NULL
 .SH PROTOCOLS
 TELNET
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  struct curl_slist *options;
-  options = curl_slist_append(NULL, "TTTYPE=vt100");
-  options = curl_slist_append(options, "USER=foobar");
-  curl_easy_setopt(curl, CURLOPT_URL, "telnet://example.com/");
-  curl_easy_setopt(curl, CURLOPT_TELNETOPTIONS, options);
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
-  curl_slist_free_all(options);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    struct curl_slist *options;
+    options = curl_slist_append(NULL, "TTTYPE=vt100");
+    options = curl_slist_append(options, "USER=foobar");
+    curl_easy_setopt(curl, CURLOPT_URL, "telnet://example.com/");
+    curl_easy_setopt(curl, CURLOPT_TELNETOPTIONS, options);
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(options);
+  }
 }
 .fi
 .SH AVAILABILITY
@@ -59,4 +65,5 @@ Along with TELNET
 .SH RETURN VALUE
 Returns CURLE_OK if TELNET is supported, and CURLE_UNKNOWN_OPTION if not.
 .SH "SEE ALSO"
-.BR CURLOPT_HTTPHEADER "(3), " CURLOPT_QUOTE "(3), "
+.BR CURLOPT_HTTPHEADER (3),
+.BR CURLOPT_QUOTE (3)

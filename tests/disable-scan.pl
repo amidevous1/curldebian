@@ -6,7 +6,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 2010 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -19,6 +19,8 @@
 # This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 # KIND, either express or implied.
 #
+# SPDX-License-Identifier: curl
+#
 ###########################################################################
 #
 
@@ -27,6 +29,8 @@ use warnings;
 
 # the DISABLE options that can be set by configure
 my %disable;
+# the DISABLE options that can be set by CMakeLists.txt
+my %disable_cmake;
 # the DISABLE options that are used in C files
 my %file;
 # the DISABLE options that are documented
@@ -59,11 +63,29 @@ sub scan_configure {
     }
 }
 
+sub scanconf_cmake {
+    my ($f)=@_;
+    open S, "<$f";
+    while(<S>) {
+        if(/(CURL_DISABLE_[A-Z_]+)/g) {
+            my ($sym)=($1);
+            if(not $sym =~ /(CURL_DISABLE_INSTALL|CURL_DISABLE_TESTS|CURL_DISABLE_SRP)/) {
+                $disable_cmake{$sym} = 1;
+            }
+        }
+    }
+    close S;
+}
+
+sub scan_cmake {
+    scanconf_cmake("$root/CMakeLists.txt");
+}
+
 sub scan_file {
     my ($source)=@_;
     open F, "<$source";
     while(<F>) {
-        if(/(CURL_DISABLE_[A-Z_]+)/g) {
+        while(s/(CURL_DISABLE_[A-Z_]+)//) {
             my ($sym)=($1);
             $file{$sym} = $source;
         }
@@ -93,7 +115,7 @@ sub scan_docs {
     my $line = 0;
     while(<F>) {
         $line++;
-        if(/^## (CURL_DISABLE_[A-Z_]+)/g) {
+        if(/^## `(CURL_DISABLE_[A-Z_]+)/g) {
             my ($sym)=($1);
             $docs{$sym} = $line;
         }
@@ -102,6 +124,7 @@ sub scan_docs {
 }
 
 scan_configure();
+scan_cmake();
 scan_sources();
 scan_docs();
 
@@ -119,10 +142,26 @@ for my $s (sort keys %disable) {
     }
 }
 
+# Check the CMakeLists.txt symbols for use in code
+for my $s (sort keys %disable_cmake) {
+    if(!$file{$s}) {
+        printf "Present in CMakeLists.txt, not used by code: %s\n", $s;
+        $error++;
+    }
+    if(!$docs{$s}) {
+        printf "Present in CMakeLists.txt, not documented in $DOCS: %s\n", $s;
+        $error++;
+    }
+}
+
 # Check the code symbols for use in configure
 for my $s (sort keys %file) {
     if(!$disable{$s}) {
         printf "Not set by configure: %s (%s)\n", $s, $file{$s};
+        $error++;
+    }
+    if(!$disable_cmake{$s}) {
+        printf "Not set by CMakeLists.txt: %s (%s)\n", $s, $file{$s};
         $error++;
     }
     if(!$docs{$s}) {
@@ -135,6 +174,10 @@ for my $s (sort keys %file) {
 for my $s (sort keys %docs) {
     if(!$disable{$s}) {
         printf "Documented but not in configure: %s\n", $s;
+        $error++;
+    }
+    if(!$disable_cmake{$s}) {
+        printf "Documented but not in CMakeLists.txt: %s\n", $s;
         $error++;
     }
     if(!$file{$s}) {

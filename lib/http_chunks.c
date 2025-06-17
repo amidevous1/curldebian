@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -18,6 +18,8 @@
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
  *
+ * SPDX-License-Identifier: curl
+ *
  ***************************************************************************/
 
 #include "curl_setup.h"
@@ -29,7 +31,6 @@
 #include "dynbuf.h"
 #include "content_encoding.h"
 #include "http.h"
-#include "non-ascii.h" /* for Curl_convert_to_network prototype */
 #include "strtoofft.h"
 #include "warnless.h"
 
@@ -74,19 +75,6 @@
 
  */
 
-#ifdef CURL_DOES_CONVERSIONS
-/* Check for an ASCII hex digit.
-   We avoid the use of ISXDIGIT to accommodate non-ASCII hosts. */
-static bool isxdigit_ascii(char digit)
-{
-  return (digit >= 0x30 && digit <= 0x39) /* 0-9 */
-    || (digit >= 0x41 && digit <= 0x46) /* A-F */
-    || (digit >= 0x61 && digit <= 0x66); /* a-f */
-}
-#else
-#define isxdigit_ascii(x) Curl_isxdigit(x)
-#endif
-
 void Curl_httpchunk_init(struct Curl_easy *data)
 {
   struct connectdata *conn = data->conn;
@@ -108,9 +96,9 @@ void Curl_httpchunk_init(struct Curl_easy *data)
  * For example, 0x0d and 0x0a are used instead of '\r' and '\n'.
  */
 CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
-                              char *datap,
-                              ssize_t datalen,
-                              ssize_t *wrotep,
+                              char *buf,
+                              size_t blen,
+                              size_t *pconsumed,
                               CURLcode *extrap)
 {
   CURLcode result = CURLE_OK;
@@ -118,29 +106,27 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
   struct Curl_chunker *ch = &conn->chunk;
   struct SingleRequest *k = &data->req;
   size_t piece;
-  curl_off_t length = (curl_off_t)datalen;
-  size_t *wrote = (size_t *)wrotep;
 
-  *wrote = 0; /* nothing's written yet */
+  *pconsumed = 0; /* nothing's written yet */
 
   /* the original data is written to the client, but we go on with the
-     chunk read process, to properly calculate the content length*/
+     chunk read process, to properly calculate the content length */
   if(data->set.http_te_skip && !k->ignorebody) {
-    result = Curl_client_write(data, CLIENTWRITE_BODY, datap, datalen);
+    result = Curl_client_write(data, CLIENTWRITE_BODY, buf, blen);
     if(result) {
       *extrap = result;
       return CHUNKE_PASSTHRU_ERROR;
     }
   }
 
-  while(length) {
+  while(blen) {
     switch(ch->state) {
     case CHUNK_HEX:
-      if(isxdigit_ascii(*datap)) {
+      if(ISXDIGIT(*buf)) {
         if(ch->hexindex < CHUNK_MAXNUM_LEN) {
-          ch->hexbuffer[ch->hexindex] = *datap;
-          datap++;
-          length--;
+          ch->hexbuffer[ch->hexindex] = *buf;
+          buf++;
+          blen--;
           ch->hexindex++;
         }
         else {
@@ -154,16 +140,8 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
              a hexadecimal digit. */
           return CHUNKE_ILLEGAL_HEX;
 
-        /* length and datap are unmodified */
+        /* blen and buf are unmodified */
         ch->hexbuffer[ch->hexindex] = 0;
-
-        /* convert to host encoding before calling strtoul */
-        result = Curl_convert_from_network(data, ch->hexbuffer, ch->hexindex);
-        if(result) {
-          /* Curl_convert_from_network calls failf if unsuccessful */
-          /* Treat it as a bad hex character */
-          return CHUNKE_ILLEGAL_HEX;
-        }
 
         if(curlx_strtoofft(ch->hexbuffer, &endptr, 16, &ch->datasize))
           return CHUNKE_ILLEGAL_HEX;
@@ -173,7 +151,7 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
 
     case CHUNK_LF:
       /* waiting for the LF after a chunk size */
-      if(*datap == 0x0a) {
+      if(*buf == 0x0a) {
         /* we're now expecting data to come, unless size was zero! */
         if(0 == ch->datasize) {
           ch->state = CHUNK_TRAILER; /* now check for trailers */
@@ -182,22 +160,21 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
           ch->state = CHUNK_DATA;
       }
 
-      datap++;
-      length--;
+      buf++;
+      blen--;
       break;
 
     case CHUNK_DATA:
-      /* We expect 'datasize' of data. We have 'length' right now, it can be
+      /* We expect 'datasize' of data. We have 'blen' right now, it can be
          more or less than 'datasize'. Get the smallest piece.
       */
-      piece = curlx_sotouz((ch->datasize >= length)?length:ch->datasize);
+      piece = blen;
+      if(ch->datasize < (curl_off_t)blen)
+        piece = curlx_sotouz(ch->datasize);
 
       /* Write the data portion available */
       if(!data->set.http_te_skip && !k->ignorebody) {
-        if(!data->set.http_ce_skip && k->writer_stack)
-          result = Curl_unencode_write(data, k->writer_stack, datap, piece);
-        else
-          result = Curl_client_write(data, CLIENTWRITE_BODY, datap, piece);
+        result = Curl_client_write(data, CLIENTWRITE_BODY, buf, piece);
 
         if(result) {
           *extrap = result;
@@ -205,10 +182,10 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
         }
       }
 
-      *wrote += piece;
+      *pconsumed += piece;
       ch->datasize -= piece; /* decrease amount left to expect */
-      datap += piece;    /* move read pointer forward */
-      length -= piece;   /* decrease space left in this round */
+      buf += piece;    /* move read pointer forward */
+      blen -= piece;   /* decrease space left in this round */
 
       if(0 == ch->datasize)
         /* end of data this round, we now expect a trailing CRLF */
@@ -216,39 +193,34 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
       break;
 
     case CHUNK_POSTLF:
-      if(*datap == 0x0a) {
+      if(*buf == 0x0a) {
         /* The last one before we go back to hex state and start all over. */
         Curl_httpchunk_init(data); /* sets state back to CHUNK_HEX */
       }
-      else if(*datap != 0x0d)
+      else if(*buf != 0x0d)
         return CHUNKE_BAD_CHUNK;
-      datap++;
-      length--;
+      buf++;
+      blen--;
       break;
 
     case CHUNK_TRAILER:
-      if((*datap == 0x0d) || (*datap == 0x0a)) {
+      if((*buf == 0x0d) || (*buf == 0x0a)) {
         char *tr = Curl_dyn_ptr(&conn->trailer);
         /* this is the end of a trailer, but if the trailer was zero bytes
            there was no trailer and we move on */
 
         if(tr) {
           size_t trlen;
-          result = Curl_dyn_add(&conn->trailer, (char *)"\x0d\x0a");
+          result = Curl_dyn_addn(&conn->trailer, (char *)STRCONST("\x0d\x0a"));
           if(result)
             return CHUNKE_OUT_OF_MEMORY;
 
           tr = Curl_dyn_ptr(&conn->trailer);
           trlen = Curl_dyn_len(&conn->trailer);
-          /* Convert to host encoding before calling Curl_client_write */
-          result = Curl_convert_from_network(data, tr, trlen);
-          if(result)
-            /* Curl_convert_from_network calls failf if unsuccessful */
-            /* Treat it as a bad chunk */
-            return CHUNKE_BAD_CHUNK;
-
           if(!data->set.http_te_skip) {
-            result = Curl_client_write(data, CLIENTWRITE_HEADER, tr, trlen);
+            result = Curl_client_write(data,
+                                       CLIENTWRITE_HEADER|CLIENTWRITE_TRAILER,
+                                       tr, trlen);
             if(result) {
               *extrap = result;
               return CHUNKE_PASSTHRU_ERROR;
@@ -256,7 +228,7 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
           }
           Curl_dyn_reset(&conn->trailer);
           ch->state = CHUNK_TRAILER_CR;
-          if(*datap == 0x0a)
+          if(*buf == 0x0a)
             /* already on the LF */
             break;
         }
@@ -267,19 +239,19 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
         }
       }
       else {
-        result = Curl_dyn_addn(&conn->trailer, datap, 1);
+        result = Curl_dyn_addn(&conn->trailer, buf, 1);
         if(result)
           return CHUNKE_OUT_OF_MEMORY;
       }
-      datap++;
-      length--;
+      buf++;
+      blen--;
       break;
 
     case CHUNK_TRAILER_CR:
-      if(*datap == 0x0a) {
+      if(*buf == 0x0a) {
         ch->state = CHUNK_TRAILER_POSTCR;
-        datap++;
-        length--;
+        buf++;
+        blen--;
       }
       else
         return CHUNKE_BAD_CHUNK;
@@ -288,27 +260,27 @@ CHUNKcode Curl_httpchunk_read(struct Curl_easy *data,
     case CHUNK_TRAILER_POSTCR:
       /* We enter this state when a CR should arrive so we expect to
          have to first pass a CR before we wait for LF */
-      if((*datap != 0x0d) && (*datap != 0x0a)) {
+      if((*buf != 0x0d) && (*buf != 0x0a)) {
         /* not a CR then it must be another header in the trailer */
         ch->state = CHUNK_TRAILER;
         break;
       }
-      if(*datap == 0x0d) {
+      if(*buf == 0x0d) {
         /* skip if CR */
-        datap++;
-        length--;
+        buf++;
+        blen--;
       }
       /* now wait for the final LF */
       ch->state = CHUNK_STOP;
       break;
 
     case CHUNK_STOP:
-      if(*datap == 0x0a) {
-        length--;
+      if(*buf == 0x0a) {
+        blen--;
 
         /* Record the length of any data left in the end of the buffer
            even if there's no more chunks to read */
-        ch->datasize = curlx_sotouz(length);
+        ch->datasize = blen;
 
         return CHUNKE_STOP; /* return stop */
       }

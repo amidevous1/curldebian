@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -18,9 +18,11 @@
 .\" * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 .\" * KIND, either express or implied.
 .\" *
+.\" * SPDX-License-Identifier: curl
+.\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_SSL_EC_CURVES 3 "November 26, 2021" "libcurl 7.81.0" "curl_easy_setopt options"
+.TH CURLOPT_SSL_EC_CURVES 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_SSL_EC_CURVES \- key exchange curves
@@ -40,12 +42,16 @@ the SSL backend libcurl is built to use supports it).
 HTTP
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
-  curl_easy_setopt(curl, CURLOPT_SSL_EC_CURVES, "X25519:P-521");
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/");
+    curl_easy_setopt(curl, CURLOPT_SSL_EC_CURVES, "X25519:P-521");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY
@@ -53,5 +59,7 @@ Added in 7.73.0. Supported by the OpenSSL backend.
 .SH RETURN VALUE
 Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.
 .SH "SEE ALSO"
-.BR CURLOPT_SSL_OPTIONS "(3), " CURLOPT_SSL_CIPHER_LIST "(3), "
-.BR CURLOPT_TLS13_CIPHERS "(3), "
+.BR CURLOPT_SSL_OPTIONS (3),
+.BR CURLOPT_SSL_CIPHER_LIST (3),
+.BR CURLOPT_TLS13_CIPHERS (3)
+

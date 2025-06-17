@@ -10,7 +10,7 @@ Experimental support in curl means:
    "carved in stone".
 2. You must enable the feature when invoking configure as otherwise curl will
    not be built with the feature present.
-3. We strongly advice against using this feature in production.
+3. We strongly advise against using this feature in production.
 4. **We reserve the right to change behavior** of the feature without sticking
    to our API/ABI rules as we do for regular features, as long as it is marked
    experimental.
@@ -19,5 +19,6 @@ Experimental support in curl means:
 ## Experimental features right now
 
  - The Hyper HTTP backend
- - HTTP/3 support and options
- - CURLSSLOPT_NATIVE_CA (No configure option, feature built in when supported)
+ - HTTP/3 support (using the quiche or msh3 backends)
+ - The rustls backend
+ - WebSocket

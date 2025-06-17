@@ -5,7 +5,7 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
@@ -17,6 +17,8 @@
  *
  * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
  * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
 #include "tool_setup.h"
@@ -41,10 +43,10 @@
 
 static const char *unslashquote(const char *line, char *param);
 
-#define MAX_CONFIG_LINE_LENGTH (100*1024)
+#define MAX_CONFIG_LINE_LENGTH (10*1024*1024)
 static bool my_get_line(FILE *fp, struct curlx_dynbuf *, bool *error);
 
-#ifdef WIN32
+#ifdef _WIN32
 static FILE *execpath(const char *filename, char **pathp)
 {
   static char filebuffer[512];
@@ -84,15 +86,10 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
   int rc = 0;
   struct OperationConfig *operation = global->last;
   char *pathalloc = NULL;
-#ifdef WIN32
-#define DOTSCORE TRUE /* look for underscore-prefixed name too */
-#else
-#define DOTSCORE FALSE
-#endif
 
   if(!filename) {
     /* NULL means load .curlrc from homedir! */
-    char *curlrc = findfile(".curlrc", DOTSCORE);
+    char *curlrc = findfile(".curlrc", CURLRC_DOTSCORE);
     if(curlrc) {
       file = fopen(curlrc, FOPEN_READTEXT);
       if(!file) {
@@ -101,7 +98,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
       }
       filename = pathalloc = curlrc;
     }
-#ifdef WIN32 /* Windows */
+#ifdef _WIN32 /* Windows */
     else {
       char *fullp;
       /* check for .curlrc then _curlrc in the dir of the executable */
@@ -171,7 +168,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
         *line++ = '\0'; /* null-terminate, we have a local copy of the data */
 
 #ifdef DEBUG_CONFIG
-      fprintf(stderr, "GOT: %s\n", option);
+      fprintf(tool_stderr, "GOT: %s\n", option);
 #endif
 
       /* pass spaces and separator(s) */
@@ -213,8 +210,9 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
             break;
           default:
             warnf(operation->global, "%s:%d: warning: '%s' uses unquoted "
-                  "whitespace in the line that may cause side-effects!\n",
-                  filename, lineno, option);
+                  "whitespace", filename, lineno, option);
+            warnf(operation->global, "This may cause side-effects. "
+                  "Consider using double quotes?");
           }
         }
         if(!*param)
@@ -224,9 +222,9 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
       }
 
 #ifdef DEBUG_CONFIG
-      fprintf(stderr, "PARAM: \"%s\"\n",(param ? param : "(null)"));
+      fprintf(tool_stderr, "PARAM: \"%s\"\n",(param ? param : "(null)"));
 #endif
-      res = getparameter(option, param, &usedarg, global, operation);
+      res = getparameter(option, param, NULL, &usedarg, global, operation);
       operation = global->last;
 
       if(!res && param && *param && !usedarg)
@@ -266,7 +264,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
            res != PARAM_VERSION_INFO_REQUESTED &&
            res != PARAM_ENGINES_REQUESTED) {
           const char *reason = param2text(res);
-          warnf(operation->global, "%s:%d: warning: '%s' %s\n",
+          warnf(operation->global, "%s:%d: warning: '%s' %s",
                 filename, lineno, option, reason);
         }
       }

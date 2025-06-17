@@ -5,7 +5,7 @@
 .\" *                            | (__| |_| |  _ <| |___
 .\" *                             \___|\___/|_| \_\_____|
 .\" *
-.\" * Copyright (C) 1998 - 2021, Daniel Stenberg, <daniel@haxx.se>, et al.
+.\" * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 .\" *
 .\" * This software is licensed as described in the file COPYING, which
 .\" * you should have received as part of this distribution. The terms
@@ -18,9 +18,11 @@
 .\" * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
 .\" * KIND, either express or implied.
 .\" *
+.\" * SPDX-License-Identifier: curl
+.\" *
 .\" **************************************************************************
 .\"
-.TH CURLOPT_DNS_SERVERS 3 "November 26, 2021" "libcurl 7.81.0" "curl_easy_setopt options"
+.TH CURLOPT_DNS_SERVERS 3 "December 04, 2023" "ibcurl 8.5.0" libcurl
 
 .SH NAME
 CURLOPT_DNS_SERVERS \- DNS servers to use
@@ -48,12 +50,17 @@ NULL - use system default
 All
 .SH EXAMPLE
 .nf
-CURL *curl = curl_easy_init();
-if(curl) {
-  curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
-  curl_easy_setopt(curl, CURLOPT_DNS_SERVERS, "192.168.1.100:53,192.168.1.101");
-  ret = curl_easy_perform(curl);
-  curl_easy_cleanup(curl);
+int main(void)
+{
+  CURL *curl = curl_easy_init();
+  if(curl) {
+    CURLcode res;
+    curl_easy_setopt(curl, CURLOPT_URL, "https://example.com/foo.bin");
+    curl_easy_setopt(curl, CURLOPT_DNS_SERVERS,
+                     "192.168.1.100:53,192.168.1.101");
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
 }
 .fi
 .SH AVAILABILITY
@@ -67,4 +74,6 @@ CURLE_NOT_BUILT_IN if support was disabled at compile-time,
 CURLE_BAD_FUNCTION_ARGUMENT when given an invalid server list, or
 CURLE_OUT_OF_MEMORY if there was insufficient heap space.
 .SH "SEE ALSO"
-.BR CURLOPT_DNS_LOCAL_IP4 "(3), " CURLOPT_DNS_CACHE_TIMEOUT "(3), "
+.BR CURLOPT_DNS_CACHE_TIMEOUT (3),
+.BR CURLOPT_DNS_LOCAL_IP4 (3),
+.BR CURLOPT_DNS_LOCAL_IP6 (3)
