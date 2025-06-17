@@ -6,7 +6,7 @@
 #                            | (__| |_| |  _ <| |___
 #                             \___|\___/|_| \_\_____|
 #
-# Copyright (C) 1998 - 2010, Daniel Stenberg, <daniel@haxx.se>, et al.
+# Copyright (C) 1998 - 2014, Daniel Stenberg, <daniel@haxx.se>, et al.
 #
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution. The terms
@@ -26,7 +26,8 @@
 # non-secure test harness servers.
 
 BEGIN {
-    @INC=(@INC, $ENV{'srcdir'}, '.');
+    push(@INC, $ENV{'srcdir'}) if(defined $ENV{'srcdir'});
+    push(@INC, ".");
 }
 
 use strict;
@@ -111,7 +112,12 @@ while(@ARGV) {
     }
     elsif($ARGV[0] eq '--stunnel') {
         if($ARGV[1]) {
-            $stunnel = $ARGV[1];
+            if($ARGV[1] =~ /^([\w\/]+)$/) {
+                $stunnel = $ARGV[1];
+            }
+            else {
+                $stunnel = "\"". $ARGV[1] ."\"";
+            }
             shift @ARGV;
         }
     }
@@ -242,19 +248,21 @@ if($stunnel_version >= 400) {
     $SIG{TERM} = \&exit_signal_handler;
     # stunnel configuration file
     if(open(STUNCONF, ">$conffile")) {
-	print STUNCONF "
-	CApath = $path
-	cert = $certfile
-	pid = $pidfile
-	debug = $loglevel
-	output = $logfile
-	socket = $socketopt
-	foreground = yes
-	
-	[curltest]
-	accept = $accept_port
-	connect = $target_port
-	";
+        print STUNCONF "
+            CApath = $path
+            cert = $certfile
+            debug = $loglevel
+            socket = $socketopt";
+        if($stunnel !~ /tstunnel(\.exe)?"?$/) {
+            print STUNCONF "
+            output = $logfile
+            pid = $pidfile
+            foreground = yes";
+        }
+        print STUNCONF "
+            [curltest]
+            accept = $accept_port
+            connect = $target_port";
         if(!close(STUNCONF)) {
             print "$ssltext Error closing file $conffile\n";
             exit 1;
@@ -285,6 +293,25 @@ if($stunnel_version >= 400) {
 # Set file permissions on certificate pem file.
 #
 chmod(0600, $certfile) if(-f $certfile);
+
+#***************************************************************************
+# Run tstunnel on Windows.
+#
+if($stunnel =~ /tstunnel(\.exe)?"?$/) {
+    # Fake pidfile for tstunnel on Windows.
+    if(open(OUT, ">$pidfile")) {
+        print OUT $$ . "\n";
+        close(OUT);
+    }
+
+    # Put an "exec" in front of the command so that the child process
+    # keeps this child's process ID.
+    exec("exec $cmd") || die "Can't exec() $cmd: $!";
+
+    # exec() should never return back here to this process. We protect
+    # ourselves by calling die() just in case something goes really bad.
+    die "error: exec() has returned";
+}
 
 #***************************************************************************
 # Run stunnel.
