@@ -6,11 +6,11 @@ rem *                             / __| | | | |_) | |
 rem *                            | (__| |_| |  _ <| |___
 rem *                             \___|\___/|_| \_\_____|
 rem *
-rem * Copyright (C) 2012 - 2015, Steve Holme, <steve_holme@hotmail.com>.
+rem * Copyright (C) 2012 - 2017, Steve Holme, <steve_holme@hotmail.com>.
 rem *
 rem * This software is licensed as described in the file COPYING, which
 rem * you should have received as part of this distribution. The terms
-rem * are also available at http://curl.haxx.se/docs/copyright.html.
+rem * are also available at https://curl.haxx.se/docs/copyright.html.
 rem *
 rem * You may opt to use, copy, modify, merge, publish, distribute and/or sell
 rem * copies of the Software, and permit persons to whom the Software is
@@ -72,6 +72,10 @@ rem ***************************************************************************
     set VC_VER=14.0
     set VC_DESC=VC14
     set "VC_PATH=Microsoft Visual Studio 14.0\VC"
+  ) else if /i "%~1" == "vc15" (
+    set VC_VER=15.0
+    set VC_DESC=VC15
+    set "VC_PATH=Microsoft Visual Studio\2017\Community\VC"
   ) else if /i "%~1%" == "x86" (
     set BUILD_PLATFORM=x86
   ) else if /i "%~1%" == "x64" (
@@ -120,16 +124,26 @@ rem ***************************************************************************
   rem Check we have Visual Studio installed
   if not exist "%PF%\%VC_PATH%" goto novc
 
-  rem Check we have Perl installed
+  rem Check we have Perl in our path
   echo %PATH% | findstr /I /C:"\Perl" 1>nul
   if errorlevel 1 (
-    if not exist "%SystemDrive%\Perl" (
-      if not exist "%SystemDrive%\Perl64" goto noperl
+    rem It isn't so check we have it installed and set the path if it is
+    if exist "%SystemDrive%\Perl" (
+      set "PATH=%SystemDrive%\Perl\bin;%PATH%"
+    ) else (
+      if exist "%SystemDrive%\Perl64" (
+        set "PATH=%SystemDrive%\Perl64\bin;%PATH%"
+      ) else (
+        goto noperl
+      )
     )
   )
 
   rem Check the start directory exists
   if not exist "%START_DIR%" goto noopenssl
+
+  rem Check that OpenSSL is not unsupported version 1.1.0
+  if not exist "%START_DIR%\ms\do_ms.bat" goto unsupported
 
 :configure
   if "%BUILD_PLATFORM%" == "" (
@@ -156,23 +170,28 @@ rem ***************************************************************************
     if "%VC_VER%" == "11.0" set VCVARS_PLATFORM=amd64
     if "%VC_VER%" == "12.0" set VCVARS_PLATFORM=amd64
     if "%VC_VER%" == "14.0" set VCVARS_PLATFORM=amd64
+    if "%VC_VER%" == "15.0" set VCVARS_PLATFORM=amd64
   )
 
 :start
   echo.
+  set SAVED_PATH=%CD%
+
   if "%VC_VER%" == "6.0" (
     call "%PF%\%VC_PATH%\bin\vcvars32"
   ) else if "%VC_VER%" == "7.0" (
     call "%PF%\%VC_PATH%\bin\vcvars32"
   ) else if "%VC_VER%" == "7.1" (
     call "%PF%\%VC_PATH%\bin\vcvars32"
+  ) else if "%VC_VER%" == "15.0" (
+    call "%PF%\%VC_PATH%\Auxiliary\Build\vcvarsall" %VCVARS_PLATFORM%
   ) else (
     call "%PF%\%VC_PATH%\vcvarsall" %VCVARS_PLATFORM%
   )
 
   echo.
-  set SAVED_PATH=%CD%
-  if defined START_DIR CD %START_DIR%
+  cd %SAVED_PATH%
+  cd %START_DIR%
   goto %BUILD_PLATFORM%
 
 :x64
@@ -297,6 +316,7 @@ rem ***************************************************************************
   echo vc11      - Use Visual Studio 2012
   echo vc12      - Use Visual Studio 2013
   echo vc14      - Use Visual Studio 2015
+  echo vc15      - Use Visual Studio 2017
   echo.
   echo Platform:
   echo.
@@ -346,6 +366,14 @@ rem ***************************************************************************
 :noopenssl
   echo.
   echo Error: Cannot locate OpenSSL source directory
+  goto error
+
+:unsupported
+  echo.
+  echo Error: Unsupported OpenSSL version.
+  echo The pre-generated project files and this build script only support the
+  echo LTS version of OpenSSL ^(v1.0.2^). The next version of this build script
+  echo will support OpenSSL v1.1.0.
   goto error
 
 :error

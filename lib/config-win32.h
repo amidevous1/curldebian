@@ -7,11 +7,11 @@
  *                            | (__| |_| |  _ <| |___
  *                             \___|\___/|_| \_\_____|
  *
- * Copyright (C) 1998 - 2015, Daniel Stenberg, <daniel@haxx.se>, et al.
+ * Copyright (C) 1998 - 2017, Daniel Stenberg, <daniel@haxx.se>, et al.
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at http://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.haxx.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -60,9 +60,6 @@
 
 /* Define if you have the <io.h> header file. */
 #define HAVE_IO_H 1
-
-/* Define if you have the <limits.h> header file. */
-#define HAVE_LIMITS_H 1
 
 /* Define if you have the <locale.h> header file. */
 #define HAVE_LOCALE_H 1
@@ -227,12 +224,6 @@
 /* Define if you have the `CRYPTO_cleanup_all_ex_data' function.
    This is present in OpenSSL versions after 0.9.6b */
 #define HAVE_CRYPTO_CLEANUP_ALL_EX_DATA 1
-
-/* Define if you have the 'DES_set_odd_parity' function when using OpenSSL/
-   BoringSSL */
-#if defined(USE_OPENSSL) || defined(HAVE_BORINGSSL)
-#define HAVE_DES_SET_ODD_PARITY 1
-#endif
 
 /* Define if you have the select function. */
 #define HAVE_SELECT 1
@@ -405,12 +396,18 @@
 /* Define to the size of `short', as computed by sizeof. */
 #define SIZEOF_SHORT 2
 
+/* Define to the size of `long', as computed by sizeof. */
+#define SIZEOF_LONG 4
+
 /* Define to the size of `size_t', as computed by sizeof. */
 #if defined(_WIN64)
 #  define SIZEOF_SIZE_T 8
 #else
 #  define SIZEOF_SIZE_T 4
 #endif
+
+/* Define to the size of `curl_off_t', as computed by sizeof. */
+#define SIZEOF_CURL_OFF_T 8
 
 /* ---------------------------------------------------------------- */
 /*               BSD-style lwIP TCP/IP stack SPECIFIC               */
@@ -499,7 +496,7 @@
 #define _CRT_NONSTDC_NO_DEPRECATE 1
 #endif
 
-/* VS2005 and later dafault size for time_t is 64-bit, unless
+/* VS2005 and later default size for time_t is 64-bit, unless
    _USE_32BIT_TIME_T has been defined to get a 32-bit time_t. */
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
 #  ifndef _USE_32BIT_TIME_T
@@ -520,7 +517,7 @@
 #  define VS2008_MIN_TARGET 0x0500
 
    /* The minimum build target for VS2012 is Vista unless Update 1 is installed
-      and the v110_xp toolset is choosen. */
+      and the v110_xp toolset is chosen. */
 #  if defined(_USING_V110_SDK71_)
 #    define VS2012_MIN_TARGET 0x0501
 #  else
@@ -532,7 +529,7 @@
 #  define VS2008_DEF_TARGET 0x0501
 
    /* VS2012 default build target is Windows Vista unless Update 1 is installed
-      and the v110_xp toolset is choosen. */
+      and the v110_xp toolset is chosen. */
 #  if defined(_USING_V110_SDK71_)
 #    define VS2012_DEF_TARGET 0x0501
 #  else
@@ -709,9 +706,7 @@ Vista
 #endif
 
 /* Define to use the Windows crypto library. */
-#if !defined(USE_OPENSSL) && !defined(USE_NSS)
 #define USE_WIN32_CRYPTO
-#endif
 
 /* ---------------------------------------------------------------- */
 /*                       ADDITIONAL DEFINITIONS                     */
@@ -735,7 +730,7 @@ Vista
 /* If you want to build curl with the built-in manual */
 #define USE_MANUAL 1
 
-#if defined(__POCC__) || (USE_IPV6)
+#if defined(__POCC__) || defined(USE_IPV6)
 #  define ENABLE_IPV6 1
 #endif
 

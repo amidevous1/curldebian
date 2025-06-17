@@ -3,17 +3,13 @@ noinst_PROGRAMS = getpart resolve rtspd sockfilt sws tftpd fake_ntlm
 CURLX_SRCS = \
  ../../lib/mprintf.c \
  ../../lib/nonblock.c \
- ../../lib/strequal.c \
  ../../lib/strtoofft.c \
- ../../lib/timeval.c \
  ../../lib/warnless.c
 
 CURLX_HDRS = \
  ../../lib/curlx.h \
  ../../lib/nonblock.h \
- ../../lib/strequal.h \
  ../../lib/strtoofft.h \
- ../../lib/timeval.h \
  ../../lib/warnless.h
 
 USEFUL = \
