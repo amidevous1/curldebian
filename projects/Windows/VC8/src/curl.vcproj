@@ -4081,6 +4081,10 @@
 			Name="Source Files"
 			>
 			<File
+				RelativePath="..\..\..\..\lib\curl_ctype.c"
+			>
+			</File>
+			<File
 				RelativePath="..\..\..\..\lib\nonblock.c"
 			>
 			</File>
@@ -4149,6 +4153,10 @@
 			>
 			</File>
 			<File
+				RelativePath="..\..\..\..\src\tool_filetime.c"
+			>
+			</File>
+			<File
 				RelativePath="..\..\..\..\src\tool_formparse.c"
 			>
 			</File>
@@ -4213,6 +4221,10 @@
 			>
 			</File>
 			<File
+				RelativePath="..\..\..\..\src\tool_progress.c"
+			>
+			</File>
+			<File
 				RelativePath="..\..\..\..\src\tool_setopt.c"
 			>
 			</File>
@@ -4250,6 +4262,10 @@
 			>
 			<File
 				RelativePath="..\..\..\..\lib\config-win32.h"
+			>
+			</File>
+			<File
+				RelativePath="..\..\..\..\lib\curl_ctype.h"
 			>
 			</File>
 			<File
@@ -4325,6 +4341,10 @@
 			>
 			</File>
 			<File
+				RelativePath="..\..\..\..\src\tool_filetime.h"
+			>
+			</File>
+			<File
 				RelativePath="..\..\..\..\src\tool_formparse.h"
 			>
 			</File>
@@ -4386,6 +4406,10 @@
 			</File>
 			<File
 				RelativePath="..\..\..\..\src\tool_parsecfg.h"
+			>
+			</File>
+			<File
+				RelativePath="..\..\..\..\src\tool_progress.h"
 			>
 			</File>
 			<File
